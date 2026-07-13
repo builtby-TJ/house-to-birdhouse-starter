@@ -1,0 +1,128 @@
+{
+  "project_name": "Basic Colonial Prototype",
+  "generator": "birdhouse-cad prototype 0.1.0",
+  "status": "prototype_geometry",
+  "part_count": 6,
+  "parts": [
+    {
+      "name": "front_wall",
+      "file": "front_wall.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -120.0,
+          -6.0,
+          0.0
+        ],
+        [
+          120.0,
+          3.4000000000000004,
+          155.0
+        ]
+      ],
+      "faces": 560,
+      "vertices": 296
+    },
+    {
+      "name": "back_wall",
+      "file": "back_wall.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -120.0,
+          -6.0,
+          0.0
+        ],
+        [
+          120.0,
+          3.2,
+          155.0
+        ]
+      ],
+      "faces": 548,
+      "vertices": 288
+    },
+    {
+      "name": "left_wall",
+      "file": "left_wall.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -6.0,
+          -95.0,
+          0.0
+        ],
+        [
+          3.2,
+          95.0,
+          155.0
+        ]
+      ],
+      "faces": 548,
+      "vertices": 288
+    },
+    {
+      "name": "right_wall",
+      "file": "right_wall.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -6.0,
+          -95.0,
+          0.0
+        ],
+        [
+          3.2,
+          95.0,
+          155.0
+        ]
+      ],
+      "faces": 548,
+      "vertices": 288
+    },
+    {
+      "name": "roof",
+      "file": "roof.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -130.0,
+          -95.25580288383564,
+          120.90474834978782
+        ],
+        [
+          130.0,
+          95.25580288383564,
+          240.03499078320533
+        ]
+      ],
+      "faces": 36,
+      "vertices": 24
+    },
+    {
+      "name": "floor",
+      "file": "floor.stl",
+      "watertight": true,
+      "bounds_mm": [
+        [
+          -120.0,
+          -95.0,
+          0.0
+        ],
+        [
+          120.0,
+          95.0,
+          9.5
+        ]
+      ],
+      "faces": 60,
+      "vertices": 40
+    }
+  ],
+  "preview": "exploded_preview.glb",
+  "known_limitations": [
+    "Prototype bosses do not yet contain subtractive pilot holes or counterbores.",
+    "Production CAD must use CadQuery/OpenCascade for tolerance-controlled solids and STEP export.",
+    "Roof geometry is a simplified proof of pipeline output."
+  ]
+}

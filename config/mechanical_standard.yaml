@@ -1,0 +1,57 @@
+product:
+  name: house_birdhouse_v1
+  units: mm
+  parts:
+    - front_wall
+    - back_wall
+    - left_wall
+    - right_wall
+    - roof
+    - floor
+
+material:
+  preferred: ASA
+  alternatives:
+    - PETG
+  prototype_allowed:
+    - PLA
+
+panels:
+  nominal_wall_thickness: 4.0
+  minimum_wall_thickness: 3.2
+  floor_thickness: 5.5
+  roof_thickness: 4.5
+  bottom_sill_thickness: 9.0
+  top_header_thickness: 9.0
+  corner_receiving_zone: 9.0
+
+screws:
+  designation: "#4 x 1/2 in"
+  type: self_tapping
+  material: stainless_steel
+  head: pan
+  drive: phillips_or_torx
+  required_quantity: 24
+  spare_quantity: 4
+  pilot_hole_diameter: 2.2
+  pilot_hole_range: [2.1, 2.3]
+  clearance_hole_diameter: 3.1
+  counterbore_diameter: 6.0
+  counterbore_depth: 2.0
+  boss_outside_diameter: 9.0
+  target_engagement: 7.0
+  minimum_edge_distance: 6.0
+
+assembly:
+  base_to_wall_screws: 8
+  wall_corner_screws: 8
+  roof_to_wall_screws: 8
+  corner_joint: stepped_rabbet
+  base_alignment: raised_perimeter_lip
+  roof_alignment: underside_locating_ribs
+
+printer_profiles:
+  bambu_h2d_conservative:
+    max_part_x: 300.0
+    max_part_y: 300.0
+    max_part_z: 300.0

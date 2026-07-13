@@ -1,0 +1,49 @@
+{
+  "project_name": "Basic Colonial Prototype",
+  "model": {
+    "width_mm": 240,
+    "depth_mm": 190,
+    "wall_height_mm": 155,
+    "wall_thickness_mm": 4,
+    "entrance_hole_diameter_mm": 32
+  },
+  "roof": {
+    "type": "gable",
+    "pitch_degrees": 38,
+    "overhang_mm": 10,
+    "thickness_mm": 4.5
+  },
+  "facades": {
+    "front": {
+      "features": [
+        {"kind": "door", "x": 0.42, "y": 0.0, "width": 0.16, "height": 0.48, "relief_mm": 1.4, "color_group": "door"},
+        {"kind": "window", "x": 0.12, "y": 0.46, "width": 0.16, "height": 0.24, "relief_mm": 1.2, "color_group": "trim"},
+        {"kind": "window", "x": 0.72, "y": 0.46, "width": 0.16, "height": 0.24, "relief_mm": 1.2, "color_group": "trim"}
+      ]
+    },
+    "back": {
+      "features": [
+        {"kind": "window", "x": 0.18, "y": 0.40, "width": 0.16, "height": 0.24, "relief_mm": 1.2, "color_group": "trim"},
+        {"kind": "window", "x": 0.66, "y": 0.40, "width": 0.16, "height": 0.24, "relief_mm": 1.2, "color_group": "trim"}
+      ]
+    },
+    "left": {
+      "features": [
+        {"kind": "window", "x": 0.20, "y": 0.42, "width": 0.20, "height": 0.25, "relief_mm": 1.2, "color_group": "trim"},
+        {"kind": "window", "x": 0.62, "y": 0.42, "width": 0.20, "height": 0.25, "relief_mm": 1.2, "color_group": "trim"}
+      ]
+    },
+    "right": {
+      "features": [
+        {"kind": "window", "x": 0.20, "y": 0.42, "width": 0.20, "height": 0.25, "relief_mm": 1.2, "color_group": "trim"},
+        {"kind": "window", "x": 0.62, "y": 0.42, "width": 0.20, "height": 0.25, "relief_mm": 1.2, "color_group": "trim"}
+      ]
+    }
+  },
+  "colors": {
+    "siding": "warm_gray",
+    "trim": "white",
+    "door": "blue",
+    "roof": "charcoal"
+  }
+}

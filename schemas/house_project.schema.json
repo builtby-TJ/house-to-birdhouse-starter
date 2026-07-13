@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/house_project.schema.json",
+  "title": "House-to-Birdhouse Project",
+  "type": "object",
+  "required": ["project_name", "model", "roof", "facades"],
+  "properties": {
+    "project_name": {"type": "string", "minLength": 1},
+    "model": {
+      "type": "object",
+      "required": ["width_mm", "depth_mm", "wall_height_mm", "wall_thickness_mm"],
+      "properties": {
+        "width_mm": {"type": "number", "exclusiveMinimum": 80, "maximum": 300},
+        "depth_mm": {"type": "number", "exclusiveMinimum": 80, "maximum": 300},
+        "wall_height_mm": {"type": "number", "exclusiveMinimum": 60, "maximum": 300},
+        "wall_thickness_mm": {"type": "number", "minimum": 3.2, "maximum": 8},
+        "entrance_hole_diameter_mm": {"type": ["number", "null"], "minimum": 20, "maximum": 60}
+      },
+      "additionalProperties": false
+    },
+    "roof": {
+      "type": "object",
+      "required": ["type", "pitch_degrees", "overhang_mm"],
+      "properties": {
+        "type": {"enum": ["gable"]},
+        "pitch_degrees": {"type": "number", "minimum": 15, "maximum": 60},
+        "overhang_mm": {"type": "number", "minimum": 3, "maximum": 30},
+        "thickness_mm": {"type": "number", "minimum": 3.2, "maximum": 8}
+      },
+      "additionalProperties": false
+    },
+    "facades": {
+      "type": "object",
+      "required": ["front", "back", "left", "right"],
+      "properties": {
+        "front": {"$ref": "#/$defs/facade"},
+        "back": {"$ref": "#/$defs/facade"},
+        "left": {"$ref": "#/$defs/facade"},
+        "right": {"$ref": "#/$defs/facade"}
+      },
+      "additionalProperties": false
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "feature": {
+      "type": "object",
+      "required": ["kind", "x", "y", "width", "height"],
+      "properties": {
+        "kind": {"enum": ["window", "door", "garage_door", "shutter", "trim"]},
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1},
+        "width": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "height": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "relief_mm": {"type": "number", "minimum": 0, "maximum": 8, "default": 1.2},
+        "color_group": {"type": "string", "default": "trim"}
+      },
+      "additionalProperties": false
+    },
+    "facade": {
+      "type": "object",
+      "required": ["features"],
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/feature"},
+          "maxItems": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
