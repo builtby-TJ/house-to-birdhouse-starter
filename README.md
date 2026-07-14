@@ -44,6 +44,9 @@ birdhouse-cad generate-coupons --output ../../generated/test_coupons
 Production CAD is pinned to CadQuery 2.8.0 and cadquery-ocp/OpenCascade
 7.9.3.1.1. The test-coupon command reads all screw and joint dimensions from
 `config/mechanical_standard.yaml` and writes verified STEP and STL exports.
+The generated set includes screw-fit, corner-joint, and raised-lip base-to-wall
+assembly coupons. These remain physically unvalidated until the selected supplier
+screw and printed fits are measured.
 
 Start the API:
 

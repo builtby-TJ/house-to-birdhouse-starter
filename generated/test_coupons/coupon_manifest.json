@@ -37,6 +37,26 @@
       ]
     ]
   },
+  "base_coupon": {
+    "part_count": 2,
+    "alignment": "raised_perimeter_lip",
+    "fit_clearance_mm": 0.2,
+    "clearance_hole_diameter_mm": 3.1,
+    "pilot_hole_diameter_mm": 2.2,
+    "screw_tip_safety_mm": 8.8,
+    "screw_centers_mm": [
+      [
+        14.0,
+        15.0,
+        7.5
+      ],
+      [
+        34.0,
+        15.0,
+        7.5
+      ]
+    ]
+  },
   "exports": {
     "screw_test_coupon": {
       "step": "screw_test_coupon.step",
@@ -55,6 +75,18 @@
       "stl": "corner_receiving_part.stl",
       "step_bytes": 45081,
       "stl_bytes": 67484
+    },
+    "base_floor_part": {
+      "step": "base_floor_part.step",
+      "stl": "base_floor_part.stl",
+      "step_bytes": 73580,
+      "stl_bytes": 104084
+    },
+    "base_wall_part": {
+      "step": "base_wall_part.step",
+      "stl": "base_wall_part.stl",
+      "step_bytes": 37785,
+      "stl_bytes": 51884
     }
   }
 }

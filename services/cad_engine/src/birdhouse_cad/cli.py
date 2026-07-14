@@ -73,7 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     coupons = sub.add_parser(
         "generate-coupons",
-        help="Generate Production CAD Milestone 1 screw and corner test coupons",
+        help="Generate Production CAD screw, corner, and base assembly test coupons",
     )
     coupons.add_argument("--output", required=True)
     coupons.set_defaults(func=command_generate_coupons)

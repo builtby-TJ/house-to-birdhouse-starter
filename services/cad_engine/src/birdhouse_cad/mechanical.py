@@ -58,13 +58,26 @@ class CornerCouponStandard:
 
 
 @dataclass(frozen=True)
+class BaseCouponStandard:
+    segment_length: float
+    floor_depth: float
+    wall_height: float
+    lip_width: float
+    lip_height: float
+    fit_clearance: float
+    screw_positions: tuple[float, float]
+
+
+@dataclass(frozen=True)
 class MechanicalStandard:
     units: str
     nominal_wall_thickness: float
+    nominal_floor_thickness: float
     corner_receiving_zone: float
     screw: ScrewStandard
     screw_coupon: ScrewCouponStandard
     corner_coupon: CornerCouponStandard
+    base_coupon: BaseCouponStandard
 
 
 def _positive(name: str, value: Any) -> float:
@@ -103,9 +116,15 @@ def load_mechanical_standard(path: Path | None = None) -> MechanicalStandard:
     if len(heights) != 2:
         raise ValueError("corner coupon requires exactly two screw heights")
 
+    base = coupons["base_coupon"]
+    screw_positions = tuple(float(value) for value in base["screw_positions"])
+    if len(screw_positions) != 2:
+        raise ValueError("base coupon requires exactly two screw positions")
+
     return MechanicalStandard(
         units=data["product"]["units"],
         nominal_wall_thickness=_positive("nominal_wall_thickness", panels["nominal_wall_thickness"]),
+        nominal_floor_thickness=_positive("floor_thickness", panels["floor_thickness"]),
         corner_receiving_zone=_positive("corner_receiving_zone", panels["corner_receiving_zone"]),
         screw=ScrewStandard(
             designation=screws["designation"],
@@ -140,5 +159,14 @@ def load_mechanical_standard(path: Path | None = None) -> MechanicalStandard:
             rabbet_width=_positive("rabbet_width", corner["rabbet_width"]),
             fit_clearance=_positive("fit_clearance", corner["fit_clearance"]),
             screw_heights=(heights[0], heights[1]),
+        ),
+        base_coupon=BaseCouponStandard(
+            segment_length=_positive("segment_length", base["segment_length"]),
+            floor_depth=_positive("floor_depth", base["floor_depth"]),
+            wall_height=_positive("wall_height", base["wall_height"]),
+            lip_width=_positive("lip_width", base["lip_width"]),
+            lip_height=_positive("lip_height", base["lip_height"]),
+            fit_clearance=_positive("fit_clearance", base["fit_clearance"]),
+            screw_positions=(screw_positions[0], screw_positions[1]),
         ),
     )

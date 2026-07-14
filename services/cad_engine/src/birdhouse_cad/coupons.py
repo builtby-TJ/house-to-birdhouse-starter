@@ -29,12 +29,28 @@ class CornerCoupon:
     fit_clearance: float
 
 
+@dataclass(frozen=True)
+class BaseCoupon:
+    floor_part: cq.Workplane
+    wall_part: cq.Workplane
+    screw_centers: tuple[tuple[float, float, float], ...]
+    interface_z: float
+    screw_tip_z: float
+    receiving_zone_end_z: float
+    fit_clearance: float
+
+
 def _box(x: float, y: float, z: float, dx: float, dy: float, dz: float) -> cq.Workplane:
     return cq.Workplane("XY").box(dx, dy, dz, centered=(False, False, False)).translate((x, y, z))
 
 
 def _cylinder_y(radius: float, length: float, x: float, y: float, z: float) -> cq.Workplane:
     solid = cq.Solid.makeCylinder(radius, length, cq.Vector(x, y, z), cq.Vector(0, 1, 0))
+    return cq.Workplane(obj=solid)
+
+
+def _cylinder_z(radius: float, length: float, x: float, y: float, z: float) -> cq.Workplane:
+    solid = cq.Solid.makeCylinder(radius, length, cq.Vector(x, y, z), cq.Vector(0, 0, 1))
     return cq.Workplane(obj=solid)
 
 
@@ -183,6 +199,86 @@ def build_corner_coupon(standard: MechanicalStandard | None = None) -> CornerCou
     )
 
 
+def build_base_coupon(standard: MechanicalStandard | None = None) -> BaseCoupon:
+    standard = standard or load_mechanical_standard()
+    screw = standard.screw
+    coupon = standard.base_coupon
+    floor_thickness = standard.nominal_floor_thickness
+    wall_y0 = (coupon.floor_depth - standard.nominal_wall_thickness) / 2
+    screw_y = coupon.floor_depth / 2
+
+    floor_part = _box(0, 0, 0, coupon.segment_length, coupon.floor_depth, floor_thickness)
+    lip = _box(
+        0,
+        screw_y - coupon.lip_width / 2,
+        floor_thickness,
+        coupon.segment_length,
+        coupon.lip_width,
+        coupon.lip_height,
+    )
+    floor_part = floor_part.union(lip)
+
+    wall_part = _box(
+        0,
+        wall_y0,
+        floor_thickness,
+        coupon.segment_length,
+        standard.nominal_wall_thickness,
+        coupon.wall_height,
+    )
+    groove = _box(
+        -coupon.fit_clearance / 2,
+        screw_y - coupon.lip_width / 2 - coupon.fit_clearance,
+        floor_thickness - coupon.fit_clearance / 2,
+        coupon.segment_length + coupon.fit_clearance,
+        coupon.lip_width + 2 * coupon.fit_clearance,
+        coupon.lip_height + coupon.fit_clearance,
+    )
+    wall_part = wall_part.cut(groove)
+
+    interface_z = floor_thickness + coupon.lip_height
+    centers = tuple((x, screw_y, interface_z) for x in coupon.screw_positions)
+    for x, y, _ in centers:
+        clearance = _cylinder_z(
+            screw.clearance_hole_diameter / 2,
+            floor_thickness + coupon.lip_height + coupon.fit_clearance,
+            x,
+            y,
+            -coupon.fit_clearance / 2,
+        )
+        counterbore = _cylinder_z(
+            screw.counterbore_diameter / 2,
+            screw.counterbore_depth + coupon.fit_clearance / 2,
+            x,
+            y,
+            -coupon.fit_clearance / 2,
+        )
+        pilot = _cylinder_z(
+            screw.pilot_hole_diameter / 2,
+            screw.target_engagement,
+            x,
+            y,
+            interface_z,
+        )
+        floor_part = floor_part.cut(clearance).cut(counterbore)
+        wall_part = wall_part.cut(pilot)
+
+    screw_tip_z = screw.counterbore_depth + screw.length_mm
+    receiving_zone_end_z = floor_thickness + coupon.wall_height
+    if screw_tip_z > receiving_zone_end_z:
+        raise ValueError("locked screw would protrude beyond the base coupon wall")
+
+    return BaseCoupon(
+        floor_part=floor_part,
+        wall_part=wall_part,
+        screw_centers=centers,
+        interface_z=interface_z,
+        screw_tip_z=screw_tip_z,
+        receiving_zone_end_z=receiving_zone_end_z,
+        fit_clearance=coupon.fit_clearance,
+    )
+
+
 def _export_verified(solid: cq.Workplane, step_path: Path, stl_path: Path) -> dict[str, int]:
     cq.exporters.export(solid, str(step_path))
     cq.exporters.export(solid, str(stl_path), tolerance=0.01, angularTolerance=0.1)
@@ -200,11 +296,14 @@ def export_test_coupons(output_dir: Path, standard: MechanicalStandard | None = 
     output_dir.mkdir(parents=True, exist_ok=True)
     screw_coupon = build_screw_coupon(standard)
     corner_coupon = build_corner_coupon(standard)
+    base_coupon = build_base_coupon(standard)
 
     solids = {
         "screw_test_coupon": screw_coupon.solid,
         "corner_clearance_part": corner_coupon.clearance_part,
         "corner_receiving_part": corner_coupon.receiving_part,
+        "base_floor_part": base_coupon.floor_part,
+        "base_wall_part": base_coupon.wall_part,
     }
     exports = {}
     for name, solid in solids.items():
@@ -239,6 +338,15 @@ def export_test_coupons(output_dir: Path, standard: MechanicalStandard | None = 
             "pilot_hole_diameter_mm": standard.screw.pilot_hole_diameter,
             "screw_tip_safety_mm": corner_coupon.receiving_zone_end_y - corner_coupon.screw_tip_y,
             "screw_centers_mm": corner_coupon.screw_centers,
+        },
+        "base_coupon": {
+            "part_count": 2,
+            "alignment": "raised_perimeter_lip",
+            "fit_clearance_mm": base_coupon.fit_clearance,
+            "clearance_hole_diameter_mm": standard.screw.clearance_hole_diameter,
+            "pilot_hole_diameter_mm": standard.screw.pilot_hole_diameter,
+            "screw_tip_safety_mm": base_coupon.receiving_zone_end_z - base_coupon.screw_tip_z,
+            "screw_centers_mm": base_coupon.screw_centers,
         },
         "exports": exports,
     }

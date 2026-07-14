@@ -57,6 +57,14 @@ test_coupons:
     rabbet_width: 4.5
     fit_clearance: 0.2
     screw_heights: [16.0, 44.0]
+  base_coupon:
+    segment_length: 48.0
+    floor_depth: 30.0
+    wall_height: 18.0
+    lip_width: 3.0
+    lip_height: 2.0
+    fit_clearance: 0.2
+    screw_positions: [14.0, 34.0]
 
 assembly:
   base_to_wall_screws: 8

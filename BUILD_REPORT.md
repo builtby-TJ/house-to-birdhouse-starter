@@ -38,6 +38,7 @@ The `production-cad-milestone-1` branch adds CadQuery/OpenCascade test geometry 
 
 - A parametric screw coupon with 2.1, 2.2, and 2.3 mm blind pilot bores, flat-bottom 6.0 x 2.0 mm counterbores, and engraved labels.
 - A two-piece 90-degree corner coupon with a 0.2 mm-clearance stepped rabbet, two 3.1 mm clearance bores, two 2.2 mm pilot bores, and 2.0 mm modeled screw-tip safety.
+- A two-piece base assembly coupon with a raised locating lip, clearance-matched wall groove, and two upward screw stations.
 - STEP round-trip, STL watertightness, solid validity, dimensional, and assembly-alignment assertions.
 
 Verification result: `6 passed`. The original sample also continues to generate six watertight reported meshes and its exploded GLB preview.
