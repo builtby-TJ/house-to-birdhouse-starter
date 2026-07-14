@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from pathlib import Path
 
 import cadquery as cq
@@ -64,3 +65,8 @@ def test_facade_model_exports_feature_and_color_manifest(tmp_path: Path) -> None
     assert manifest["color_groups"]["roof"] == "charcoal"
     assert manifest["entrance_hole_diameter_mm"] == 32
     assert manifest["part_count"] == 6
+    for filename in manifest["package_files"].values():
+        assert (tmp_path / filename).stat().st_size > 0
+    with zipfile.ZipFile(tmp_path / manifest["package_files"]["3mf"]) as package:
+        assert "3D/3dmodel.model" in package.namelist()
+        assert "[Content_Types].xml" in package.namelist()

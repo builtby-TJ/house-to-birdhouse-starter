@@ -55,6 +55,8 @@ STL exports, the locked 24-screw layout, floor lips, roof ribs, and true bores.
 It remains physically unvalidated and is not labeled print-ready.
 The production command adds JSON-defined normalized windows, doors, shutters,
 trim, color-group metadata, and the optional functional entrance opening.
+Its delivery package includes six STEP/STL pairs, project JSON, exploded GLB,
+multi-object 3MF, validation report, hardware list, and assembly instructions.
 
 Start the API:
 

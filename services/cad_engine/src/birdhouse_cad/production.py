@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import math
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import cadquery as cq
+import trimesh
 
 from .mechanical import MechanicalStandard, load_mechanical_standard
 from .models import Facade, HouseProject
@@ -267,6 +270,7 @@ def export_production_model(project: HouseProject, output_dir: Path) -> dict:
             "stl_bytes": stl.stat().st_size,
         }
 
+    package_files = _write_delivery_package(project, output_dir, exports)
     manifest = {
         "project_name": project.project_name,
         "generator": "birdhouse-cad production facade model",
@@ -282,6 +286,7 @@ def export_production_model(project: HouseProject, output_dir: Path) -> dict:
         "color_groups": project.colors,
         "entrance_hole_diameter_mm": project.model.entrance_hole_diameter_mm,
         "parts": exports,
+        "package_files": package_files,
         "known_limitations": [
             "Supplier screw dimensions have not been confirmed.",
             "Joint and facade relief fits have not been validated with a physical print.",
@@ -290,3 +295,109 @@ def export_production_model(project: HouseProject, output_dir: Path) -> dict:
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
+
+
+def _write_delivery_package(
+    project: HouseProject, output_dir: Path, exports: dict[str, dict[str, object]]
+) -> dict[str, str]:
+    project_path = output_dir / "project.json"
+    project_path.write_text(project.model_dump_json(indent=2), encoding="utf-8")
+
+    meshes = {
+        name: trimesh.load_mesh(output_dir / str(files["stl"]))
+        for name, files in exports.items()
+    }
+    scene = trimesh.Scene()
+    offset = 0.0
+    for name, mesh in meshes.items():
+        placed = mesh.copy()
+        placed.apply_translation((offset - placed.bounds[0][0], 0, 0))
+        scene.add_geometry(placed, node_name=name, geom_name=name)
+        offset += float(placed.extents[0]) + 20.0
+    preview_path = output_dir / "exploded_preview.glb"
+    scene.export(preview_path)
+
+    package_3mf = output_dir / "print_package.3mf"
+    _write_3mf(package_3mf, meshes)
+
+    maximum = 300.0
+    validation = {
+        "status": "geometry_valid_unvalidated_physically",
+        "all_parts_watertight": all(bool(mesh.is_watertight) for mesh in meshes.values()),
+        "all_parts_within_bambu_h2d_conservative_profile": all(
+            all(float(value) <= maximum for value in mesh.extents) for mesh in meshes.values()
+        ),
+        "printer_profile_max_mm": [maximum, maximum, maximum],
+        "supplier_screw_measurements_confirmed": False,
+        "physical_print_fit_confirmed": False,
+    }
+    validation_path = output_dir / "validation_report.json"
+    validation_path.write_text(json.dumps(validation, indent=2), encoding="utf-8")
+
+    hardware = {
+        "screw": "#4 x 1/2 in stainless self-tapping pan-head",
+        "required_quantity": 24,
+        "spare_quantity": 4,
+        "driver": "matching Phillips or Torx screwdriver for selected supplier screw",
+        "supplier_part_number": None,
+    }
+    hardware_path = output_dir / "hardware_list.json"
+    hardware_path.write_text(json.dumps(hardware, indent=2), encoding="utf-8")
+
+    instructions_path = output_dir / "assembly_instructions.md"
+    instructions_path.write_text(
+        """# Birdhouse assembly instructions
+
+1. Seat the four wall panels on the floor locating lips.
+2. Install the eight base screws upward through the recessed floor holes.
+3. Close the four stepped wall corners and install two screws per corner.
+4. Seat the roof locating ribs in the wall-header grooves.
+5. Install the eight roof screws downward through the recessed roof holes.
+6. Stop if plastic splits, a screw spins freely, or a tip becomes visible.
+
+This package is not physically validated. Confirm supplier screw dimensions and complete a printed fit test before customer use.
+""",
+        encoding="utf-8",
+    )
+    return {
+        "project": project_path.name,
+        "preview": preview_path.name,
+        "3mf": package_3mf.name,
+        "validation_report": validation_path.name,
+        "hardware_list": hardware_path.name,
+        "assembly_instructions": instructions_path.name,
+    }
+
+
+def _write_3mf(path: Path, meshes: dict[str, trimesh.Trimesh]) -> None:
+    namespace = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+    ET.register_namespace("", namespace)
+    model = ET.Element(f"{{{namespace}}}model", {"unit": "millimeter", "xml:lang": "en-US"})
+    resources = ET.SubElement(model, f"{{{namespace}}}resources")
+    build = ET.SubElement(model, f"{{{namespace}}}build")
+    offset = 0.0
+    for object_id, (name, mesh) in enumerate(meshes.items(), start=1):
+        obj = ET.SubElement(resources, f"{{{namespace}}}object", {"id": str(object_id), "name": name, "type": "model"})
+        mesh_element = ET.SubElement(obj, f"{{{namespace}}}mesh")
+        vertices = ET.SubElement(mesh_element, f"{{{namespace}}}vertices")
+        for x, y, z in mesh.vertices:
+            ET.SubElement(vertices, f"{{{namespace}}}vertex", {"x": str(float(x)), "y": str(float(y)), "z": str(float(z))})
+        triangles = ET.SubElement(mesh_element, f"{{{namespace}}}triangles")
+        for v1, v2, v3 in mesh.faces:
+            ET.SubElement(triangles, f"{{{namespace}}}triangle", {"v1": str(int(v1)), "v2": str(int(v2)), "v3": str(int(v3))})
+        ET.SubElement(build, f"{{{namespace}}}item", {"objectid": str(object_id), "transform": f"1 0 0 0 1 0 0 0 1 {offset} 0 0"})
+        offset += float(mesh.extents[0]) + 20.0
+
+    content_types = """<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+</Types>"""
+    relationships = """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+</Relationships>"""
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+        package.writestr("[Content_Types].xml", content_types)
+        package.writestr("_rels/.rels", relationships)
+        package.writestr("3D/3dmodel.model", ET.tostring(model, encoding="utf-8", xml_declaration=True))
