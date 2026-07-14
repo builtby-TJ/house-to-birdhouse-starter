@@ -65,6 +65,14 @@ test_coupons:
     lip_height: 2.0
     fit_clearance: 0.2
     screw_positions: [14.0, 34.0]
+  roof_coupon:
+    segment_length: 48.0
+    roof_depth: 30.0
+    header_height: 18.0
+    rib_width: 3.0
+    rib_height: 2.0
+    fit_clearance: 0.2
+    screw_positions: [14.0, 34.0]
 
 assembly:
   base_to_wall_screws: 8

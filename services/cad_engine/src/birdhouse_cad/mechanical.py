@@ -69,15 +69,28 @@ class BaseCouponStandard:
 
 
 @dataclass(frozen=True)
+class RoofCouponStandard:
+    segment_length: float
+    roof_depth: float
+    header_height: float
+    rib_width: float
+    rib_height: float
+    fit_clearance: float
+    screw_positions: tuple[float, float]
+
+
+@dataclass(frozen=True)
 class MechanicalStandard:
     units: str
     nominal_wall_thickness: float
     nominal_floor_thickness: float
+    nominal_roof_thickness: float
     corner_receiving_zone: float
     screw: ScrewStandard
     screw_coupon: ScrewCouponStandard
     corner_coupon: CornerCouponStandard
     base_coupon: BaseCouponStandard
+    roof_coupon: RoofCouponStandard
 
 
 def _positive(name: str, value: Any) -> float:
@@ -121,10 +134,16 @@ def load_mechanical_standard(path: Path | None = None) -> MechanicalStandard:
     if len(screw_positions) != 2:
         raise ValueError("base coupon requires exactly two screw positions")
 
+    roof = coupons["roof_coupon"]
+    roof_screw_positions = tuple(float(value) for value in roof["screw_positions"])
+    if len(roof_screw_positions) != 2:
+        raise ValueError("roof coupon requires exactly two screw positions")
+
     return MechanicalStandard(
         units=data["product"]["units"],
         nominal_wall_thickness=_positive("nominal_wall_thickness", panels["nominal_wall_thickness"]),
         nominal_floor_thickness=_positive("floor_thickness", panels["floor_thickness"]),
+        nominal_roof_thickness=_positive("roof_thickness", panels["roof_thickness"]),
         corner_receiving_zone=_positive("corner_receiving_zone", panels["corner_receiving_zone"]),
         screw=ScrewStandard(
             designation=screws["designation"],
@@ -168,5 +187,14 @@ def load_mechanical_standard(path: Path | None = None) -> MechanicalStandard:
             lip_height=_positive("lip_height", base["lip_height"]),
             fit_clearance=_positive("fit_clearance", base["fit_clearance"]),
             screw_positions=(screw_positions[0], screw_positions[1]),
+        ),
+        roof_coupon=RoofCouponStandard(
+            segment_length=_positive("segment_length", roof["segment_length"]),
+            roof_depth=_positive("roof_depth", roof["roof_depth"]),
+            header_height=_positive("header_height", roof["header_height"]),
+            rib_width=_positive("rib_width", roof["rib_width"]),
+            rib_height=_positive("rib_height", roof["rib_height"]),
+            fit_clearance=_positive("fit_clearance", roof["fit_clearance"]),
+            screw_positions=(roof_screw_positions[0], roof_screw_positions[1]),
         ),
     )

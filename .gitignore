@@ -5,4 +5,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 services/cad_engine/generated_jobs/
-
+apps/web/.next/
+apps/web/node_modules/
+generated/production_blank_shell/
+generated/production_model/

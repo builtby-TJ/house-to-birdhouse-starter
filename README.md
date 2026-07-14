@@ -39,14 +39,22 @@ pip install -e '.[dev,production-cad]'
 birdhouse-cad generate ../../sample_projects/basic_colonial.json --output ../../generated/basic_colonial
 birdhouse-cad validate ../../sample_projects/basic_colonial.json
 birdhouse-cad generate-coupons --output ../../generated/test_coupons
+birdhouse-cad generate-blank-shell ../../sample_projects/basic_colonial.json --output ../../generated/production_blank_shell
+birdhouse-cad generate-production ../../sample_projects/basic_colonial.json --output ../../generated/production_model
 ```
 
 Production CAD is pinned to CadQuery 2.8.0 and cadquery-ocp/OpenCascade
 7.9.3.1.1. The test-coupon command reads all screw and joint dimensions from
 `config/mechanical_standard.yaml` and writes verified STEP and STL exports.
-The generated set includes screw-fit, corner-joint, and raised-lip base-to-wall
-assembly coupons. These remain physically unvalidated until the selected supplier
+The generated set includes screw-fit, corner-joint, raised-lip base-to-wall, and
+underside-rib roof-to-header assembly coupons. These remain physically unvalidated until the selected supplier
 screw and printed fits are measured.
+
+The blank-shell command generates six CadQuery/OpenCascade solids with STEP and
+STL exports, the locked 24-screw layout, floor lips, roof ribs, and true bores.
+It remains physically unvalidated and is not labeled print-ready.
+The production command adds JSON-defined normalized windows, doors, shutters,
+trim, color-group metadata, and the optional functional entrance opening.
 
 Start the API:
 
@@ -68,7 +76,15 @@ GET  /v1/models/{job_id}
 GET  /v1/models/{job_id}/manifest
 ```
 
-The starter uses an in-process job registry for local development. Production should use PostgreSQL, object storage, Redis, and a durable worker queue.
+Projects, revisions, and generation jobs persist in SQLite by default under
+`generated_jobs/`. Configure `BIRDHOUSE_DATABASE_PATH` and `BIRDHOUSE_OUTPUT_ROOT`
+for deployment storage. PostgreSQL and a durable distributed worker remain deployment work.
+
+The operator web workspace supports four facade photo sets, draggable normalized
+features, exact feature dimensions, measurement calibration, revision saves, CAD
+generation, and the guided eight-view capture checklist. The vision diagnostic API
+checks resolution, exposure, likely blur, and duplicates; it reports whether COLMAP
+is installed without ever treating reconstruction output as a print mesh.
 
 ## Repository map
 

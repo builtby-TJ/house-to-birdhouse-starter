@@ -40,6 +40,17 @@ class BaseCoupon:
     fit_clearance: float
 
 
+@dataclass(frozen=True)
+class RoofCoupon:
+    header_part: cq.Workplane
+    roof_part: cq.Workplane
+    screw_centers: tuple[tuple[float, float, float], ...]
+    interface_z: float
+    screw_tip_z: float
+    receiving_zone_end_z: float
+    fit_clearance: float
+
+
 def _box(x: float, y: float, z: float, dx: float, dy: float, dz: float) -> cq.Workplane:
     return cq.Workplane("XY").box(dx, dy, dz, centered=(False, False, False)).translate((x, y, z))
 
@@ -51,6 +62,13 @@ def _cylinder_y(radius: float, length: float, x: float, y: float, z: float) -> c
 
 def _cylinder_z(radius: float, length: float, x: float, y: float, z: float) -> cq.Workplane:
     solid = cq.Solid.makeCylinder(radius, length, cq.Vector(x, y, z), cq.Vector(0, 0, 1))
+    return cq.Workplane(obj=solid)
+
+
+def _cylinder_negative_z(
+    radius: float, length: float, x: float, y: float, z: float
+) -> cq.Workplane:
+    solid = cq.Solid.makeCylinder(radius, length, cq.Vector(x, y, z), cq.Vector(0, 0, -1))
     return cq.Workplane(obj=solid)
 
 
@@ -279,6 +297,93 @@ def build_base_coupon(standard: MechanicalStandard | None = None) -> BaseCoupon:
     )
 
 
+def build_roof_coupon(standard: MechanicalStandard | None = None) -> RoofCoupon:
+    standard = standard or load_mechanical_standard()
+    screw = standard.screw
+    coupon = standard.roof_coupon
+    roof_thickness = standard.nominal_roof_thickness
+    header_y0 = (coupon.roof_depth - standard.nominal_wall_thickness) / 2
+    screw_y = coupon.roof_depth / 2
+    roof_top_z = coupon.header_height + roof_thickness
+
+    header_part = _box(
+        0,
+        header_y0,
+        0,
+        coupon.segment_length,
+        standard.nominal_wall_thickness,
+        coupon.header_height,
+    )
+    groove = _box(
+        -coupon.fit_clearance / 2,
+        screw_y - coupon.rib_width / 2 - coupon.fit_clearance,
+        coupon.header_height - coupon.rib_height - coupon.fit_clearance / 2,
+        coupon.segment_length + coupon.fit_clearance,
+        coupon.rib_width + 2 * coupon.fit_clearance,
+        coupon.rib_height + coupon.fit_clearance,
+    )
+    header_part = header_part.cut(groove)
+
+    roof_part = _box(
+        0,
+        0,
+        coupon.header_height,
+        coupon.segment_length,
+        coupon.roof_depth,
+        roof_thickness,
+    )
+    rib = _box(
+        0,
+        screw_y - coupon.rib_width / 2,
+        coupon.header_height - coupon.rib_height,
+        coupon.segment_length,
+        coupon.rib_width,
+        coupon.rib_height,
+    )
+    roof_part = roof_part.union(rib)
+
+    interface_z = coupon.header_height - coupon.rib_height
+    centers = tuple((x, screw_y, interface_z) for x in coupon.screw_positions)
+    for x, y, _ in centers:
+        clearance = _cylinder_negative_z(
+            screw.clearance_hole_diameter / 2,
+            roof_thickness + coupon.rib_height + coupon.fit_clearance,
+            x,
+            y,
+            roof_top_z + coupon.fit_clearance / 2,
+        )
+        counterbore = _cylinder_negative_z(
+            screw.counterbore_diameter / 2,
+            screw.counterbore_depth + coupon.fit_clearance / 2,
+            x,
+            y,
+            roof_top_z + coupon.fit_clearance / 2,
+        )
+        pilot = _cylinder_negative_z(
+            screw.pilot_hole_diameter / 2,
+            screw.target_engagement,
+            x,
+            y,
+            interface_z,
+        )
+        roof_part = roof_part.cut(clearance).cut(counterbore)
+        header_part = header_part.cut(pilot)
+
+    screw_tip_z = roof_top_z - screw.counterbore_depth - screw.length_mm
+    if screw_tip_z < 0:
+        raise ValueError("locked screw would protrude beyond the roof coupon header")
+
+    return RoofCoupon(
+        header_part=header_part,
+        roof_part=roof_part,
+        screw_centers=centers,
+        interface_z=interface_z,
+        screw_tip_z=screw_tip_z,
+        receiving_zone_end_z=0.0,
+        fit_clearance=coupon.fit_clearance,
+    )
+
+
 def _export_verified(solid: cq.Workplane, step_path: Path, stl_path: Path) -> dict[str, int]:
     cq.exporters.export(solid, str(step_path))
     cq.exporters.export(solid, str(stl_path), tolerance=0.01, angularTolerance=0.1)
@@ -297,6 +402,7 @@ def export_test_coupons(output_dir: Path, standard: MechanicalStandard | None = 
     screw_coupon = build_screw_coupon(standard)
     corner_coupon = build_corner_coupon(standard)
     base_coupon = build_base_coupon(standard)
+    roof_coupon = build_roof_coupon(standard)
 
     solids = {
         "screw_test_coupon": screw_coupon.solid,
@@ -304,6 +410,8 @@ def export_test_coupons(output_dir: Path, standard: MechanicalStandard | None = 
         "corner_receiving_part": corner_coupon.receiving_part,
         "base_floor_part": base_coupon.floor_part,
         "base_wall_part": base_coupon.wall_part,
+        "roof_header_part": roof_coupon.header_part,
+        "roof_panel_part": roof_coupon.roof_part,
     }
     exports = {}
     for name, solid in solids.items():
@@ -347,6 +455,15 @@ def export_test_coupons(output_dir: Path, standard: MechanicalStandard | None = 
             "pilot_hole_diameter_mm": standard.screw.pilot_hole_diameter,
             "screw_tip_safety_mm": base_coupon.receiving_zone_end_z - base_coupon.screw_tip_z,
             "screw_centers_mm": base_coupon.screw_centers,
+        },
+        "roof_coupon": {
+            "part_count": 2,
+            "alignment": "underside_locating_rib",
+            "fit_clearance_mm": roof_coupon.fit_clearance,
+            "clearance_hole_diameter_mm": standard.screw.clearance_hole_diameter,
+            "pilot_hole_diameter_mm": standard.screw.pilot_hole_diameter,
+            "screw_tip_safety_mm": roof_coupon.screw_tip_z - roof_coupon.receiving_zone_end_z,
+            "screw_centers_mm": roof_coupon.screw_centers,
         },
         "exports": exports,
     }

@@ -57,6 +57,26 @@
       ]
     ]
   },
+  "roof_coupon": {
+    "part_count": 2,
+    "alignment": "underside_locating_rib",
+    "fit_clearance_mm": 0.2,
+    "clearance_hole_diameter_mm": 3.1,
+    "pilot_hole_diameter_mm": 2.2,
+    "screw_tip_safety_mm": 7.800000000000001,
+    "screw_centers_mm": [
+      [
+        14.0,
+        15.0,
+        16.0
+      ],
+      [
+        34.0,
+        15.0,
+        16.0
+      ]
+    ]
+  },
   "exports": {
     "screw_test_coupon": {
       "step": "screw_test_coupon.step",
@@ -87,6 +107,18 @@
       "stl": "base_wall_part.stl",
       "step_bytes": 37785,
       "stl_bytes": 51884
+    },
+    "roof_header_part": {
+      "step": "roof_header_part.step",
+      "stl": "roof_header_part.stl",
+      "step_bytes": 38850,
+      "stl_bytes": 51884
+    },
+    "roof_panel_part": {
+      "step": "roof_panel_part.step",
+      "stl": "roof_panel_part.stl",
+      "step_bytes": 80421,
+      "stl_bytes": 104084
     }
   }
 }

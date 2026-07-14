@@ -9,6 +9,7 @@ import trimesh
 from birdhouse_cad.coupons import (
     build_base_coupon,
     build_corner_coupon,
+    build_roof_coupon,
     build_screw_coupon,
     export_test_coupons,
 )
@@ -109,12 +110,48 @@ def test_base_coupon_alignment_holes_and_tip_safety() -> None:
     )
 
 
+def test_roof_coupon_alignment_holes_and_tip_safety() -> None:
+    standard = load_mechanical_standard()
+    coupon = build_roof_coupon(standard)
+
+    assert len(coupon.screw_centers) == 2
+    assert coupon.header_part.val().isValid()
+    assert coupon.roof_part.val().isValid()
+    assert coupon.screw_tip_z - coupon.receiving_zone_end_z >= 2.0 - 1e-9
+    assert math.isclose(
+        coupon.header_part.intersect(coupon.roof_part).val().Volume(),
+        0.0,
+        abs_tol=1e-6,
+    )
+    assert math.isclose(
+        coupon.interface_z,
+        standard.roof_coupon.header_height - standard.roof_coupon.rib_height,
+        abs_tol=1e-6,
+    )
+
+    roof_radii = _circle_radii(coupon.roof_part)
+    header_radii = _circle_radii(coupon.header_part)
+    assert any(
+        math.isclose(radius, standard.screw.clearance_hole_diameter / 2, abs_tol=1e-6)
+        for radius in roof_radii
+    )
+    assert any(
+        math.isclose(radius, standard.screw.counterbore_diameter / 2, abs_tol=1e-6)
+        for radius in roof_radii
+    )
+    assert any(
+        math.isclose(radius, standard.screw.pilot_hole_diameter / 2, abs_tol=1e-6)
+        for radius in header_radii
+    )
+
+
 def test_coupon_step_and_stl_exports_round_trip(tmp_path: Path) -> None:
     manifest = export_test_coupons(tmp_path)
 
     assert manifest["locked_screw"]["designation"] == "#4 x 1/2 in"
     assert manifest["corner_coupon"]["part_count"] == 2
     assert manifest["base_coupon"]["part_count"] == 2
+    assert manifest["roof_coupon"]["part_count"] == 2
     for files in manifest["exports"].values():
         step = tmp_path / files["step"]
         stl = tmp_path / files["stl"]

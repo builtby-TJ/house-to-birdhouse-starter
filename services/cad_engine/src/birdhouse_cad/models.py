@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -75,3 +75,17 @@ class HouseProject(BaseModel):
     roof: RoofDefinition
     facades: Facades
     colors: Dict[str, str] = Field(default_factory=dict)
+
+
+class CaptureImage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filename: str = Field(min_length=1)
+    side: Literal["front", "right", "back", "left", "corner"]
+    content_base64: str = Field(min_length=1)
+
+
+class VisionDiagnosticRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    images: List[CaptureImage] = Field(min_length=1, max_length=40)
