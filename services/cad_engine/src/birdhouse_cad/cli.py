@@ -41,6 +41,23 @@ def command_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_generate_coupons(args: argparse.Namespace) -> int:
+    # Keep the prototype validate/generate commands usable when the optional
+    # production-CAD dependency group is not installed.
+    from .coupons import export_test_coupons
+
+    try:
+        output_dir = Path(args.output)
+        manifest = export_test_coupons(output_dir)
+    except (OSError, ValueError) as exc:
+        print(f"COUPON GENERATION FAILED: {exc}")
+        return 1
+
+    print(json.dumps(manifest, indent=2))
+    print(f"Output: {output_dir.resolve()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="birdhouse-cad")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -53,6 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("project")
     generate.add_argument("--output", required=True)
     generate.set_defaults(func=command_generate)
+
+    coupons = sub.add_parser(
+        "generate-coupons",
+        help="Generate Production CAD Milestone 1 screw and corner test coupons",
+    )
+    coupons.add_argument("--output", required=True)
+    coupons.set_defaults(func=command_generate_coupons)
     return parser
 
 

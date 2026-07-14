@@ -1,0 +1,60 @@
+{
+  "status": "production_cad_test_coupons_unvalidated_physically",
+  "units": "mm",
+  "locked_screw": {
+    "designation": "#4 x 1/2 in",
+    "type": "self_tapping",
+    "material": "stainless_steel",
+    "head": "pan",
+    "supplier_measurements_confirmed": false
+  },
+  "screw_coupon": {
+    "pilot_diameters_mm": [
+      2.1,
+      2.2,
+      2.3
+    ],
+    "counterbore_diameter_mm": 6.0,
+    "counterbore_depth_mm": 2.0
+  },
+  "corner_coupon": {
+    "part_count": 2,
+    "joint": "stepped_rabbet",
+    "fit_clearance_mm": 0.2,
+    "clearance_hole_diameter_mm": 3.1,
+    "pilot_hole_diameter_mm": 2.2,
+    "screw_tip_safety_mm": 2.0,
+    "screw_centers_mm": [
+      [
+        35.550000000000004,
+        7.699999999999999,
+        16.0
+      ],
+      [
+        35.550000000000004,
+        7.699999999999999,
+        44.0
+      ]
+    ]
+  },
+  "exports": {
+    "screw_test_coupon": {
+      "step": "screw_test_coupon.step",
+      "stl": "screw_test_coupon.stl",
+      "step_bytes": 640450,
+      "stl_bytes": 579484
+    },
+    "corner_clearance_part": {
+      "step": "corner_clearance_part.step",
+      "stl": "corner_clearance_part.stl",
+      "step_bytes": 44856,
+      "stl_bytes": 152684
+    },
+    "corner_receiving_part": {
+      "step": "corner_receiving_part.step",
+      "stl": "corner_receiving_part.stl",
+      "step_bytes": 45081,
+      "stl_bytes": 67484
+    }
+  }
+}

@@ -18,7 +18,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9", "httpx>=0.27,<1"]
-production-cad = ["cadquery>=2.5,<3"]
+production-cad = [
+  "cadquery==2.8.0",
+  "cadquery-ocp==7.9.3.1.1"
+]
 
 [project.scripts]
 birdhouse-cad = "birdhouse_cad.cli:main"

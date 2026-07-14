@@ -1,0 +1,21 @@
+name: Container smoke test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  cad-api-image:
+    name: Build CAD API image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build CAD API container
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/cad_engine/Dockerfile
+          push: false

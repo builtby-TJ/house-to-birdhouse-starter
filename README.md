@@ -34,11 +34,16 @@ Requires Python 3.11+.
 cd services/cad_engine
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\\Scripts\\activate
-pip install -e .
+pip install -e '.[dev,production-cad]'
 
 birdhouse-cad generate ../../sample_projects/basic_colonial.json --output ../../generated/basic_colonial
 birdhouse-cad validate ../../sample_projects/basic_colonial.json
+birdhouse-cad generate-coupons --output ../../generated/test_coupons
 ```
+
+Production CAD is pinned to CadQuery 2.8.0 and cadquery-ocp/OpenCascade
+7.9.3.1.1. The test-coupon command reads all screw and joint dimensions from
+`config/mechanical_standard.yaml` and writes verified STEP and STL exports.
 
 Start the API:
 

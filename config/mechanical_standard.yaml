@@ -27,6 +27,7 @@ panels:
 
 screws:
   designation: "#4 x 1/2 in"
+  length_mm: 12.7
   type: self_tapping
   material: stainless_steel
   head: pan
@@ -41,6 +42,21 @@ screws:
   boss_outside_diameter: 9.0
   target_engagement: 7.0
   minimum_edge_distance: 6.0
+  supplier_measurements_confirmed: false
+
+test_coupons:
+  screw_coupon:
+    body_depth: 32.0
+    station_spacing: 22.0
+    bottom_safety_thickness: 1.5
+    label_engraving_depth: 0.6
+  corner_coupon:
+    segment_length: 42.0
+    segment_height: 60.0
+    rabbet_depth: 2.0
+    rabbet_width: 4.5
+    fit_clearance: 0.2
+    screw_heights: [16.0, 44.0]
 
 assembly:
   base_to_wall_screws: 8

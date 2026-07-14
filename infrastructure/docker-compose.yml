@@ -1,7 +1,8 @@
 services:
   api:
     build:
-      context: ../services/cad_engine
+      context: ..
+      dockerfile: services/cad_engine/Dockerfile
     ports:
       - "8000:8000"
     volumes:
