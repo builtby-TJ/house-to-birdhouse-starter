@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletter Generator (Offline)</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --border:#dcdfe4; --text:#1f2430; --muted:#6b7280;
+    --accent:#2f6fed; --accent-ink:#ffffff; --danger:#d9483f;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+    display:flex; flex-direction:column;
+  }
+  header.app{
+    background:#1b1f2a; color:#fff; padding:10px 16px;
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  header.app h1{font-size:15px; margin:0; font-weight:600; letter-spacing:.02em;}
+  header.app .spacer{flex:1;}
+  header.app button, header.app label.filebtn{
+    background:#2a3040; color:#fff; border:1px solid #3a4155; border-radius:6px;
+    padding:6px 10px; font-size:13px; cursor:pointer;
+  }
+  header.app button.primary{background:var(--accent); border-color:var(--accent);}
+  header.app button:hover, header.app label.filebtn:hover{filter:brightness(1.15);}
+  header.app input[type=file]{display:none;}
+  #status{font-size:12px; color:#9aa3b2; min-width:120px;}
+
+  main{
+    flex:1; display:flex; min-height:0;
+  }
+  #editor{
+    width:42%; max-width:560px; min-width:320px;
+    overflow-y:auto; padding:16px; background:var(--panel);
+    border-right:1px solid var(--border);
+  }
+  #previewWrap{
+    flex:1; overflow-y:auto; padding:24px; display:flex; justify-content:center;
+    background:#e7e9ee;
+  }
+  fieldset{border:1px solid var(--border); border-radius:8px; margin-bottom:16px; padding:12px;}
+  legend{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:0 6px;}
+  label.field{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px;}
+  input[type=text], input[type=date], input[type=url], textarea, select{
+    width:100%; padding:7px 8px; border:1px solid var(--border); border-radius:6px;
+    font-size:13px; font-family:inherit; color:var(--text); background:#fff;
+  }
+  textarea{resize:vertical; min-height:60px;}
+  input[type=color]{width:44px; height:30px; border:1px solid var(--border); border-radius:6px; padding:2px; background:#fff;}
+  .row{display:flex; gap:10px;}
+  .row > *{flex:1;}
+
+  .block{
+    border:1px solid var(--border); border-radius:8px; margin-bottom:10px; background:#fafbfc;
+  }
+  .block .blockhead{
+    display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border-bottom:1px solid var(--border); background:#f0f2f5; border-radius:8px 8px 0 0;
+  }
+  .block .blockhead .tag{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+  }
+  .block .blockhead .spacer{flex:1;}
+  .block .blockhead button{
+    border:none; background:transparent; cursor:pointer; font-size:14px; color:var(--muted);
+    padding:2px 6px; border-radius:4px;
+  }
+  .block .blockhead button:hover{background:#e2e5ea; color:var(--text);}
+  .block .blockhead button.del:hover{color:#fff; background:var(--danger);}
+  .block .blockbody{padding:10px;}
+
+  #addBlockBar{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;}
+  #addBlockBar button{
+    flex:1 1 auto; padding:8px 6px; font-size:12px; border:1px dashed var(--border);
+    background:#fff; border-radius:6px; cursor:pointer; color:var(--text);
+  }
+  #addBlockBar button:hover{border-color:var(--accent); color:var(--accent);}
+
+  .imgpreview{max-width:100%; display:block; margin-top:6px; border-radius:4px; border:1px solid var(--border);}
+  .hint{font-size:11px; color:var(--muted); margin-top:4px;}
+
+  /* Newsletter preview surface */
+  #paper{
+    background:#fff; width:100%; max-width:640px; height:fit-content;
+    box-shadow:0 2px 10px rgba(0,0,0,.12);
+  }
+
+  @media (max-width: 860px){
+    main{flex-direction:column;}
+    #editor{width:100%; max-width:none; border-right:none; border-bottom:1px solid var(--border);}
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>📰 Newsletter Generator — runs 100% locally, no internet required</h1>
+  <div class="spacer"></div>
+  <span id="status"></span>
+  <button id="btnNew">New</button>
+  <label class="filebtn">Load Draft (.json)<input type="file" id="fileLoad" accept="application/json"></label>
+  <button id="btnSaveDraft">Save Draft (.json)</button>
+  <button id="btnExport" class="primary">Export Web Page (.html)</button>
+  <button id="btnPrint">Print / Save PDF</button>
+</header>
+
+<main>
+  <section id="editor">
+
+    <fieldset>
+      <legend>Masthead</legend>
+      <label class="field">Newsletter title</label>
+      <input type="text" id="fTitle" value="The Weekly Dispatch">
+
+      <label class="field">Subtitle / tagline</label>
+      <input type="text" id="fSubtitle" value="News and notes from our team">
+
+      <div class="row">
+        <div>
+          <label class="field">Issue label</label>
+          <input type="text" id="fIssue" value="Issue No. 1">
+        </div>
+        <div>
+          <label class="field">Date</label>
+          <input type="date" id="fDate">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="field">Accent color</label>
+          <input type="color" id="fColor" value="#2f6fed">
+        </div>
+        <div>
+          <label class="field">Font style</label>
+          <select id="fFont">
+            <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+            <option value="Arial, Helvetica, sans-serif" selected>Sans-serif (Arial)</option>
+            <option value="'Trebuchet MS', sans-serif">Sans-serif (Trebuchet)</option>
+            <option value="'Courier New', monospace">Monospace (Courier)</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Content blocks</legend>
+      <div id="blocks"></div>
+      <div id="addBlockBar">
+        <button data-add="heading">+ Heading</button>
+        <button data-add="paragraph">+ Paragraph</button>
+        <button data-add="image">+ Image</button>
+        <button data-add="quote">+ Quote</button>
+        <button data-add="button">+ Button link</button>
+        <button data-add="divider">+ Divider</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Footer</legend>
+      <label class="field">Footer text</label>
+      <textarea id="fFooter">You're receiving this because you subscribed. Thanks for reading!</textarea>
+    </fieldset>
+
+  </section>
+
+  <section id="previewWrap">
+    <div id="paper"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "newsletterGeneratorDraft.v1";
+  var uid = function(){ return Math.random().toString(36).slice(2,10); };
+
+  function defaultState(){
+    return {
+      title: "The Weekly Dispatch",
+      subtitle: "News and notes from our team",
+      issue: "Issue No. 1",
+      date: new Date().toISOString().slice(0,10),
+      color: "#2f6fed",
+      font: "Arial, Helvetica, sans-serif",
+      footer: "You're receiving this because you subscribed. Thanks for reading!",
+      blocks: [
+        { id: uid(), type: "heading", text: "Welcome back!" },
+        { id: uid(), type: "paragraph", text: "This is your newsletter. Edit the fields on the left — every change updates the preview on the right instantly. When it looks right, click \"Export Web Page\" to save a finished HTML file you can open in any browser, host, or email as an attachment." },
+        { id: uid(), type: "quote", text: "Great newsletters are simple, honest, and easy to skim.", attribution: "— Editorial team" },
+        { id: uid(), type: "button", label: "Read the full story", url: "https://example.com" }
+      ]
+    };
+  }
+
+  var state = null;
+
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function nl2br(s){
+    return esc(s).replace(/\n/g,"<br>");
+  }
+  function fmtDate(d){
+    if(!d) return "";
+    var parts = d.split("-");
+    if(parts.length!==3) return d;
+    var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var y=+parts[0], m=+parts[1]-1, day=+parts[2];
+    if(isNaN(y)||isNaN(m)||isNaN(day)||!months[m]) return d;
+    return months[m]+" "+day+", "+y;
+  }
+
+  // ---------- Editor form <-> state ----------
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function readMastheadIntoState(){
+    state.title = $("fTitle").value;
+    state.subtitle = $("fSubtitle").value;
+    state.issue = $("fIssue").value;
+    state.date = $("fDate").value;
+    state.color = $("fColor").value;
+    state.font = $("fFont").value;
+    state.footer = $("fFooter").value;
+  }
+
+  function paintMastheadForm(){
+    $("fTitle").value = state.title || "";
+    $("fSubtitle").value = state.subtitle || "";
+    $("fIssue").value = state.issue || "";
+    $("fDate").value = state.date || "";
+    $("fColor").value = state.color || "#2f6fed";
+    $("fFont").value = state.font || "Arial, Helvetica, sans-serif";
+    $("fFooter").value = state.footer || "";
+  }
+
+  var BLOCK_LABELS = {
+    heading: "Heading", paragraph: "Paragraph", image: "Image",
+    quote: "Quote", button: "Button link", divider: "Divider"
+  };
+
+  function blockFieldsHTML(b){
+    switch(b.type){
+      case "heading":
+        return '<label class="field">Heading text</label>' +
+               '<input type="text" data-k="text" value="'+esc(b.text)+'">';
+      case "paragraph":
+        return '<label class="field">Paragraph text</label>' +
+               '<textarea data-k="text" rows="4">'+esc(b.text)+'</textarea>';
+      case "image":
+        return '<label class="field">Choose image file (stored locally in your draft)</label>' +
+               '<input type="file" accept="image/*" data-k="_file">' +
+               '<label class="field">Alt text</label>' +
+               '<input type="text" data-k="alt" value="'+esc(b.alt||"")+'">' +
+               '<label class="field">Caption (optional)</label>' +
+               '<input type="text" data-k="caption" value="'+esc(b.caption||"")+'">' +
+               (b.src ? '<img class="imgpreview" src="'+b.src+'">' : '<div class="hint">No image selected yet.</div>');
+      case "quote":
+        return '<label class="field">Quote text</label>' +
+               '<textarea data-k="text" rows="2">'+esc(b.text)+'</textarea>' +
+               '<label class="field">Attribution (optional)</label>' +
+               '<input type="text" data-k="attribution" value="'+esc(b.attribution||"")+'">';
+      case "button":
+        return '<label class="field">Button label</label>' +
+               '<input type="text" data-k="label" value="'+esc(b.label)+'">' +
+               '<label class="field">Link URL</label>' +
+               '<input type="url" data-k="url" value="'+esc(b.url||"")+'" placeholder="https://example.com">';
+      case "divider":
+        return '<div class="hint">A horizontal divider line — no settings needed.</div>';
+      default:
+        return "";
+    }
+  }
+
+  function renderBlockEditors(){
+    var wrap = $("blocks");
+    wrap.innerHTML = "";
+    state.blocks.forEach(function(b, idx){
+      var el = document.createElement("div");
+      el.className = "block";
+      el.dataset.id = b.id;
+      el.innerHTML =
+        '<div class="blockhead">' +
+          '<span class="tag">'+BLOCK_LABELS[b.type]+'</span>' +
+          '<div class="spacer"></div>' +
+          '<button data-act="up" title="Move up">↑</button>' +
+          '<button data-act="down" title="Move down">↓</button>' +
+          '<button data-act="del" class="del" title="Delete">✕</button>' +
+        '</div>' +
+        '<div class="blockbody">' + blockFieldsHTML(b) + '</div>';
+      wrap.appendChild(el);
+
+      var body = el.querySelector(".blockbody");
+      body.querySelectorAll("[data-k]").forEach(function(input){
+        var key = input.dataset.k;
+        if(key === "_file"){
+          input.addEventListener("change", function(e){
+            var file = e.target.files && e.target.files[0];
+            if(!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev){
+              b.src = ev.target.result;
+              renderBlockEditors();
+              renderPreview();
+              saveToLocalStorage();
+            };
+            reader.readAsDataURL(file);
+          });
+        } else {
+          input.addEventListener("input", function(e){
+            b[key] = e.target.value;
+            renderPreview();
+            saveToLocalStorage();
+          });
+        }
+      });
+
+      el.querySelector('[data-act="del"]').addEventListener("click", function(){
+        state.blocks.splice(idx,1);
+        renderBlockEditors(); renderPreview(); saveToLocalStorage();
+      });
+      el.querySelector('[data-act="up"]').addEventListener("click", function(){
+        if(idx===0) return;
+        var tmp = state.blocks[idx-1]; state.blocks[idx-1]=state.blocks[idx]; state.blocks[idx]=tmp;
+        renderBlockEditors(); renderPreview(); saveToLocalStorage();
+      });
+      el.querySelector('[data-act="down"]').addEventListener("click", function(){
+        if(idx===state.blocks.length-1) return;
+        var tmp = state.blocks[idx+1]; state.blocks[idx+1]=state.blocks[idx]; state.blocks[idx]=tmp;
+        renderBlockEditors(); renderPreview(); saveToLocalStorage();
+      });
+    });
+  }
+
+  function newBlock(type){
+    var b = { id: uid(), type: type };
+    if(type==="heading") b.text = "New heading";
+    if(type==="paragraph") b.text = "Write your update here...";
+    if(type==="image"){ b.alt=""; b.caption=""; b.src=""; }
+    if(type==="quote"){ b.text="A memorable quote."; b.attribution=""; }
+    if(type==="button"){ b.label="Learn more"; b.url="https://example.com"; }
+    return b;
+  }
+
+  // ---------- Preview / export rendering ----------
+
+  function renderBlockHTML(b, color){
+    switch(b.type){
+      case "heading":
+        return '<h2 style="margin:28px 0 10px; font-size:22px; color:'+color+'; line-height:1.3;">'+esc(b.text)+'</h2>';
+      case "paragraph":
+        return '<p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#2a2f3a;">'+nl2br(b.text)+'</p>';
+      case "image":
+        return '<figure style="margin:0 0 16px;">' +
+          (b.src ? '<img src="'+b.src+'" alt="'+esc(b.alt)+'" style="max-width:100%; display:block; border-radius:4px;">' : '') +
+          (b.caption ? '<figcaption style="font-size:12px; color:#6b7280; margin-top:6px;">'+esc(b.caption)+'</figcaption>' : '') +
+          '</figure>';
+      case "quote":
+        return '<blockquote style="margin:0 0 16px; padding:10px 18px; border-left:4px solid '+color+'; ' +
+          'font-style:italic; color:#3a3f4a; background:#f7f8fa;">'+nl2br(b.text) +
+          (b.attribution ? '<div style="margin-top:6px; font-style:normal; font-size:13px; color:#6b7280;">'+esc(b.attribution)+'</div>' : '') +
+          '</blockquote>';
+      case "button":
+        return '<div style="margin:0 0 20px;"><a href="'+esc(b.url||"#")+'" style="display:inline-block; ' +
+          'background:'+color+'; color:#ffffff; text-decoration:none; padding:10px 18px; border-radius:6px; font-size:14px; font-weight:bold;">' +
+          esc(b.label)+'</a></div>';
+      case "divider":
+        return '<hr style="border:none; border-top:1px solid #e2e5ea; margin:20px 0;">';
+      default:
+        return "";
+    }
+  }
+
+  function buildDocumentHTML(){
+    readMastheadIntoState();
+    var color = state.color || "#2f6fed";
+    var font = state.font || "Arial, Helvetica, sans-serif";
+    var blocksHTML = state.blocks.map(function(b){ return renderBlockHTML(b, color); }).join("\n");
+
+    return (
+      '<div style="font-family:'+font+'; color:#1f2430; max-width:640px; margin:0 auto; background:#ffffff;">' +
+        '<div style="padding:28px 32px; border-bottom:4px solid '+color+';">' +
+          '<div style="font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:'+color+'; font-weight:bold; margin-bottom:6px;">' +
+            esc(state.issue) + (state.date ? ' &nbsp;·&nbsp; ' + fmtDate(state.date) : '') +
+          '</div>' +
+          '<h1 style="margin:0 0 6px; font-size:30px; line-height:1.2;">'+esc(state.title)+'</h1>' +
+          (state.subtitle ? '<div style="font-size:14px; color:#6b7280;">'+esc(state.subtitle)+'</div>' : '') +
+        '</div>' +
+        '<div style="padding:28px 32px;">' + blocksHTML + '</div>' +
+        '<div style="padding:20px 32px; border-top:1px solid #e2e5ea; font-size:12px; color:#8a90a0;">' +
+          nl2br(state.footer) +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderPreview(){
+    $("paper").innerHTML = buildDocumentHTML();
+  }
+
+  function fullStandaloneHTML(){
+    var inner = buildDocumentHTML();
+    var title = esc(state.title || "Newsletter");
+    return (
+'<!doctype html>\n' +
+'<html lang="en">\n' +
+'<head>\n' +
+'<meta charset="utf-8">\n' +
+'<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+'<title>' + title + '</title>\n' +
+'</head>\n' +
+'<body style="margin:0; padding:24px 12px; background:#eceef2;">\n' +
+inner + '\n' +
+'</body>\n' +
+'</html>\n'
+    );
+  }
+
+  // ---------- Persistence ----------
+
+  function saveToLocalStorage(){
+    try{
+      readMastheadIntoState();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setStatus("Draft auto-saved on this computer");
+    }catch(e){
+      setStatus("Auto-save failed (storage full?)");
+    }
+  }
+
+  function loadFromLocalStorage(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  var statusTimer = null;
+  function setStatus(msg){
+    $("status").textContent = msg;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(function(){ $("status").textContent = ""; }, 2500);
+  }
+
+  function downloadFile(filename, content, mime){
+    var blob = new Blob([content], {type: mime});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // ---------- Wiring ----------
+
+  function init(){
+    state = loadFromLocalStorage() || defaultState();
+    paintMastheadForm();
+    renderBlockEditors();
+    renderPreview();
+
+    ["fTitle","fSubtitle","fIssue","fDate","fColor","fFont","fFooter"].forEach(function(id){
+      $(id).addEventListener("input", function(){
+        readMastheadIntoState();
+        renderPreview();
+        saveToLocalStorage();
+      });
+    });
+
+    document.querySelectorAll("#addBlockBar button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.blocks.push(newBlock(btn.dataset.add));
+        renderBlockEditors(); renderPreview(); saveToLocalStorage();
+      });
+    });
+
+    $("btnNew").addEventListener("click", function(){
+      if(!confirm("Start a new newsletter? This clears the current draft from this editor (your last saved .json file, if any, is unaffected).")) return;
+      state = defaultState();
+      paintMastheadForm(); renderBlockEditors(); renderPreview(); saveToLocalStorage();
+    });
+
+    $("btnSaveDraft").addEventListener("click", function(){
+      readMastheadIntoState();
+      var name = (state.title || "newsletter").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || "newsletter";
+      downloadFile(name + "-draft.json", JSON.stringify(state, null, 2), "application/json");
+      setStatus("Draft saved to your Downloads folder");
+    });
+
+    $("fileLoad").addEventListener("change", function(e){
+      var file = e.target.files && e.target.files[0];
+      if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        try{
+          var loaded = JSON.parse(ev.target.result);
+          if(!loaded || !Array.isArray(loaded.blocks)) throw new Error("bad file");
+          state = loaded;
+          paintMastheadForm(); renderBlockEditors(); renderPreview(); saveToLocalStorage();
+          setStatus("Draft loaded");
+        }catch(err){
+          alert("That file doesn't look like a newsletter draft (.json) saved from this tool.");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    });
+
+    $("btnExport").addEventListener("click", function(){
+      readMastheadIntoState();
+      var name = (state.title || "newsletter").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || "newsletter";
+      downloadFile(name + ".html", fullStandaloneHTML(), "text/html");
+      setStatus("Web page exported to your Downloads folder");
+    });
+
+    $("btnPrint").addEventListener("click", function(){
+      var w = window.open("", "_blank");
+      w.document.write(fullStandaloneHTML());
+      w.document.close();
+      w.focus();
+      setTimeout(function(){ w.print(); }, 300);
+    });
+
+    window.addEventListener("beforeunload", saveToLocalStorage);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
