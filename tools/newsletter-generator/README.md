@@ -16,6 +16,26 @@ to launch the tool. There's nothing to build or serve.
   so the exported file is fully self-contained too.
 - The right-hand pane is a live preview of the finished newsletter.
 
+## Dictating a family update
+
+Every paragraph block has two extra buttons:
+
+- **🎤 Dictate** — click to start talking; your words are transcribed live
+  into the text box. Click again (now labeled "⏹ Stop") to finish. This uses
+  your browser's built-in speech recognition. On Chrome/Edge that typically
+  sends audio to the browser's own speech service over the internet to get
+  text back (not to this tool or any server of ours); Safari transcribes
+  on-device. If you're offline, dictation just won't produce text — the
+  status line will say so.
+- **✨ Improve flow** — rewrites your rough notes into cleaner prose.
+  - If your browser exposes on-device AI (Chrome's built-in Rewriter/Prompt
+    API), the rewrite happens entirely on your computer, no internet needed.
+  - Otherwise it falls back to a basic local cleanup — removing filler words
+    like "um"/"uh"/"like", fixing capitalization and punctuation — which
+    always works fully offline but isn't a true AI rewrite.
+  - A "↺ Undo rewrite" button appears afterward so you can revert to what
+    you dictated if you preferred it.
+
 ## Saving your work
 
 - Your draft auto-saves to the browser's local storage as you type, so

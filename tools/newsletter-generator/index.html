@@ -84,6 +84,26 @@
   .imgpreview{max-width:100%; display:block; margin-top:6px; border-radius:4px; border:1px solid var(--border);}
   .hint{font-size:11px; color:var(--muted); margin-top:4px;}
 
+  .dictrow{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+  .dictrow button{
+    font-size:12px; padding:6px 10px; border-radius:6px; border:1px solid var(--border);
+    background:#fff; cursor:pointer; color:var(--text);
+  }
+  .dictrow button:hover{border-color:var(--accent); color:var(--accent);}
+  .dictrow button.micbtn.recording{
+    background:var(--danger); border-color:var(--danger); color:#fff;
+    animation:pulse 1.2s infinite;
+  }
+  .dictrow button.rewritebtn:disabled{opacity:.6; cursor:default;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(217,72,63,.5);}
+    70%{box-shadow:0 0 0 8px rgba(217,72,63,0);}
+    100%{box-shadow:0 0 0 0 rgba(217,72,63,0);}
+  }
+  .dictstatus{min-height:14px;}
+  .dictstatus.warn{color:#b8860b;}
+  .dictstatus.busy{color:var(--accent);}
+
   /* Newsletter preview surface */
   #paper{
     background:#fff; width:100%; max-width:640px; height:fit-content;
@@ -254,7 +274,13 @@
                '<input type="text" data-k="text" value="'+esc(b.text)+'">';
       case "paragraph":
         return '<label class="field">Paragraph text</label>' +
-               '<textarea data-k="text" rows="4">'+esc(b.text)+'</textarea>';
+               '<textarea data-k="text" rows="4">'+esc(b.text)+'</textarea>' +
+               '<div class="dictrow">' +
+                 '<button type="button" class="micbtn" data-act="mic">🎤 Dictate</button>' +
+                 '<button type="button" class="rewritebtn" data-act="rewrite">✨ Improve flow</button>' +
+                 (b._prevText ? '<button type="button" class="undobtn" data-act="undo">↺ Undo rewrite</button>' : '') +
+               '</div>' +
+               '<div class="hint dictstatus'+(b._statusClass?' '+b._statusClass:'')+'" data-role="status">'+esc(b._status||"")+'</div>';
       case "image":
         return '<label class="field">Choose image file (stored locally in your draft)</label>' +
                '<input type="file" accept="image/*" data-k="_file">' +
@@ -317,13 +343,41 @@
         } else {
           input.addEventListener("input", function(e){
             b[key] = e.target.value;
+            if(key === "text"){ delete b._status; delete b._statusClass; }
             renderPreview();
             saveToLocalStorage();
           });
         }
       });
 
+      if(b.type === "paragraph"){
+        var textarea = body.querySelector('textarea[data-k="text"]');
+        var statusEl = body.querySelector('[data-role="status"]');
+        var micBtn = body.querySelector('[data-act="mic"]');
+        var rewriteBtn = body.querySelector('[data-act="rewrite"]');
+        var undoBtn = body.querySelector('[data-act="undo"]');
+
+        micBtn.addEventListener("click", function(){
+          toggleDictation(b, textarea, micBtn, statusEl);
+        });
+
+        rewriteBtn.addEventListener("click", function(){
+          runRewrite(b, textarea, rewriteBtn, statusEl);
+        });
+
+        if(undoBtn){
+          undoBtn.addEventListener("click", function(){
+            b.text = b._prevText;
+            delete b._prevText;
+            delete b._status;
+            delete b._statusClass;
+            renderBlockEditors(); renderPreview(); saveToLocalStorage();
+          });
+        }
+      }
+
       el.querySelector('[data-act="del"]').addEventListener("click", function(){
+        stopDictation(b.id);
         state.blocks.splice(idx,1);
         renderBlockEditors(); renderPreview(); saveToLocalStorage();
       });
@@ -348,6 +402,217 @@
     if(type==="quote"){ b.text="A memorable quote."; b.attribution=""; }
     if(type==="button"){ b.label="Learn more"; b.url="https://example.com"; }
     return b;
+  }
+
+  // ---------- Dictation (speech-to-text) ----------
+  //
+  // Uses the browser's built-in SpeechRecognition. Note this is NOT guaranteed
+  // to be fully offline: on Chrome/Edge, on-device speech recognition is used
+  // when available, otherwise the browser sends audio to its own speech
+  // service over the internet to transcribe it (the audio never goes through
+  // this tool or any server of ours — it's a browser-level service, same as
+  // any other voice-typing feature). Safari on macOS/iOS performs recognition
+  // on-device. If you have no internet connection, dictation simply won't
+  // produce text and the status line below will say so.
+
+  var SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var activeRecognitions = {}; // blockId -> { recog, baseText }
+
+  function stopDictation(blockId){
+    var entry = activeRecognitions[blockId];
+    if(entry){
+      try{ entry.recog.stop(); }catch(e){}
+      delete activeRecognitions[blockId];
+    }
+  }
+
+  function toggleDictation(b, textarea, micBtn, statusEl){
+    if(activeRecognitions[b.id]){
+      stopDictation(b.id);
+      micBtn.classList.remove("recording");
+      micBtn.textContent = "🎤 Dictate";
+      statusEl.textContent = "Stopped listening.";
+      statusEl.className = "hint dictstatus";
+      return;
+    }
+
+    if(!SpeechRecognitionImpl){
+      statusEl.textContent = "Dictation isn't supported in this browser. Try Chrome, Edge, or Safari.";
+      statusEl.className = "hint dictstatus warn";
+      return;
+    }
+
+    // Stop any other block that's currently listening.
+    Object.keys(activeRecognitions).forEach(stopDictation);
+
+    var recog = new SpeechRecognitionImpl();
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.lang = (navigator.language || "en-US");
+
+    var baseText = textarea.value ? (textarea.value.replace(/\s+$/,"") + " ") : "";
+    activeRecognitions[b.id] = { recog: recog, baseText: baseText };
+
+    recog.onstart = function(){
+      micBtn.classList.add("recording");
+      micBtn.textContent = "⏹ Stop";
+      statusEl.textContent = "Listening... speak your update, then click Stop.";
+      statusEl.className = "hint dictstatus busy";
+    };
+
+    recog.onresult = function(event){
+      var finalChunk = "";
+      var interimChunk = "";
+      for(var i = event.resultIndex; i < event.results.length; i++){
+        var res = event.results[i];
+        if(res.isFinal) finalChunk += res[0].transcript;
+        else interimChunk += res[0].transcript;
+      }
+      if(finalChunk){
+        activeRecognitions[b.id].baseText += finalChunk.trim() + " ";
+      }
+      var shown = activeRecognitions[b.id].baseText + interimChunk;
+      textarea.value = shown;
+      b.text = activeRecognitions[b.id].baseText.replace(/\s+$/,"");
+      saveToLocalStorage();
+    };
+
+    recog.onerror = function(event){
+      statusEl.textContent = "Dictation error: " + (event.error || "unknown") +
+        (event.error === "network" ? " — speech recognition needs an internet connection in this browser." : "");
+      statusEl.className = "hint dictstatus warn";
+    };
+
+    recog.onend = function(){
+      delete activeRecognitions[b.id];
+      micBtn.classList.remove("recording");
+      micBtn.textContent = "🎤 Dictate";
+      b.text = textarea.value.replace(/\s+$/,"");
+      renderPreview();
+      saveToLocalStorage();
+    };
+
+    try{
+      recog.start();
+    }catch(e){
+      statusEl.textContent = "Couldn't start the microphone: " + e.message;
+      statusEl.className = "hint dictstatus warn";
+      delete activeRecognitions[b.id];
+    }
+  }
+
+  // ---------- Rewrite for flow ----------
+  //
+  // Tries the browser's on-device AI first (Chrome's built-in Rewriter /
+  // Prompt API — runs entirely on your computer once its model is
+  // downloaded, no internet required at rewrite time). If that's not
+  // available in this browser, falls back to a local, rule-based cleanup
+  // (fixes filler words, spacing, and capitalization) that always works
+  // offline but is not a true AI rewrite.
+
+  function detectOnDeviceAI(){
+    if(typeof self !== "undefined" && "Rewriter" in self) return "rewriter-api";
+    if(typeof self !== "undefined" && "LanguageModel" in self) return "prompt-api";
+    if(typeof window !== "undefined" && window.ai && window.ai.languageModel) return "legacy-ai-api";
+    return null;
+  }
+
+  async function rewriteWithOnDeviceAI(text, kind){
+    var instructions = "Rewrite these rough spoken notes as one or two warm, clear, well-flowing " +
+      "paragraphs for a family update newsletter. Keep every fact and detail, keep first-person voice, " +
+      "fix grammar and remove filler words like um/uh/like, but do not invent new information.";
+
+    if(kind === "rewriter-api"){
+      var availability = await self.Rewriter.availability();
+      if(availability === "unavailable") return null;
+      var rewriter = await self.Rewriter.create({
+        tone: "as-is", format: "plain-text", length: "as-is",
+        sharedContext: "A family update newsletter written in a warm, personal voice."
+      });
+      var out = await rewriter.rewrite(text, { context: instructions });
+      rewriter.destroy && rewriter.destroy();
+      return out;
+    }
+
+    if(kind === "prompt-api"){
+      var avail = await self.LanguageModel.availability();
+      if(avail === "unavailable") return null;
+      var session = await self.LanguageModel.create();
+      var out2 = await session.prompt(instructions + "\n\nNotes:\n" + text);
+      session.destroy && session.destroy();
+      return out2;
+    }
+
+    if(kind === "legacy-ai-api"){
+      var session2 = await window.ai.languageModel.create();
+      var out3 = await session2.prompt(instructions + "\n\nNotes:\n" + text);
+      return out3;
+    }
+
+    return null;
+  }
+
+  var FILLER_WORDS = /\b(um+|uh+|erm+|you know|i mean|kind of|sort of|basically|actually|like)\b[,]?\s*/gi;
+
+  function localTidyUp(text){
+    var s = text || "";
+    s = s.replace(/\s+/g, " ").trim();
+    s = s.replace(FILLER_WORDS, "");
+    s = s.replace(/\s+([,.!?])/g, "$1");
+    s = s.replace(/\bi\b/g, "I");
+    // Split into sentences on ./!/? followed by space, capitalize each, ensure terminal punctuation.
+    var sentences = s.split(/(?<=[.!?])\s+/).filter(Boolean);
+    if(sentences.length === 0 && s) sentences = [s];
+    sentences = sentences.map(function(sent){
+      sent = sent.trim();
+      if(!sent) return sent;
+      sent = sent.charAt(0).toUpperCase() + sent.slice(1);
+      if(!/[.!?]$/.test(sent)) sent += ".";
+      return sent;
+    });
+    return sentences.join(" ").replace(/\s+/g, " ").trim();
+  }
+
+  async function runRewrite(b, textarea, rewriteBtn, statusEl){
+    var original = textarea.value;
+    if(!original || !original.trim()){
+      statusEl.textContent = "Nothing to rewrite yet — dictate or type an update first.";
+      statusEl.className = "hint dictstatus warn";
+      return;
+    }
+
+    rewriteBtn.disabled = true;
+    var kind = detectOnDeviceAI();
+
+    if(kind){
+      statusEl.textContent = "Rewriting on-device with your browser's built-in AI...";
+      statusEl.className = "hint dictstatus busy";
+      try{
+        var aiResult = await rewriteWithOnDeviceAI(original, kind);
+        if(aiResult && aiResult.trim()){
+          b._prevText = original;
+          b.text = aiResult.trim();
+          b._status = "Rewritten on-device.";
+          b._statusClass = "";
+          renderBlockEditors(); renderPreview(); saveToLocalStorage();
+          return;
+        }
+      }catch(e){
+        // fall through to local tidy-up
+      }
+    }
+
+    // Fallback: local rule-based cleanup, always available offline.
+    var tidied = localTidyUp(original);
+    b._prevText = original;
+    b.text = tidied;
+    b._status = kind
+      ? "On-device AI wasn't ready, so a basic local cleanup was applied instead."
+      : "Your browser doesn't expose on-device AI rewriting, so a basic local cleanup was applied " +
+        "(filler words removed, sentences capitalized and punctuated). For full AI rewriting entirely " +
+        "on your computer, try a recent Chrome desktop build with built-in AI enabled.";
+    b._statusClass = "warn";
+    renderBlockEditors(); renderPreview(); saveToLocalStorage();
   }
 
   // ---------- Preview / export rendering ----------
